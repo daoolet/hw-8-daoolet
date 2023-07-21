@@ -9,10 +9,10 @@ from jose import jwt
 from sqlalchemy.orm import Session
 
 
-from database import SessionLocal, Base, engine
-from flowers_repository import FlowersRepository, Flower, FlowerCreate
-from purchases_repository import PurchasesRepository
-from users_repository import UsersRepository, User, UserCreate
+from .database import SessionLocal, Base, engine
+from .flowers_repository import FlowersRepository, Flower, FlowerCreate
+from .purchases_repository import PurchasesRepository
+from .users_repository import UsersRepository, User, UserCreate
 
 
 app = FastAPI()
@@ -148,16 +148,20 @@ def delete_flower(flower_id: int, db: Session = Depends(get_db)):
 @app.get("/cart/items")
 def get_cart(db: Session = Depends(get_db)):
      
-    cart_flowers = flowers_repository.get_cart_flowers(db)
+    cart_flowers = flowers_repository.get_all_cart_flowers(db)
     total_cost = sum(i.cost for i in cart_flowers)
 
-    return {"total_cost": total_cost, "cart_flowers": cart_flowers}
+    return {"cart_flowers": cart_flowers, "total_cost": total_cost}
 
 @app.post("/cart/items")
-def post_cart(flower_id: int = Form(...)):
+def post_cart(flower_id: int, db: Session = Depends(get_db)):
     
-    current_flower = flowers_repository.get_by_id(flower_id)
-    flowers_repository.add_cart_flowers(current_flower)
+    current_flower = flowers_repository.get_by_id(db, flower_id=flower_id)
+    if not current_flower:
+        raise HTTPException(status_code = 400, detail="Flower does not exists with this id")
+
+    new_flower = FlowerCreate(name=current_flower.name, cost=current_flower.cost, count=current_flower.count)
+    flowers_repository.save_cart_flower(db, new_flower)
 
     response = Response("Added to cart - OK", status_code=200)
     response.set_cookie("flower_id", flower_id)

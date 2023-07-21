@@ -14,6 +14,19 @@ class Flower(Base):
     count = Column(Integer)
     cost = Column(Integer)
 
+    cart = relationship("Cart_Flower", uselist=False, back_populates="cart_flower")
+
+class Cart_Flower(Base):
+    __tablename__ = "cart_flowers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    count = Column(Integer)
+    cost = Column(Integer)
+
+    flower_id = Column(Integer, ForeignKey("flowers.id"), unique=True)
+    cart_flower = relationship("Flower", back_populates="cart")
+
 
 @define
 class FlowerCreate:
@@ -50,12 +63,16 @@ class FlowersRepository:
         db_flower = db.query(Flower).filter(Flower.id == flower_id).first()
         db.delete(db_flower)
         db.commit()
-        # db.refresh(db_flower)
         return True
 
-    # def add_cart_flowers(self, new_cart_flower: Flower):
-    #     self.cart_flowers.append(new_cart_flower)
-
-    # def get_cart_flowers(self):
-    #     return self.cart_flowers
+    def save_cart_flower(self, db: Session, new_flower: FlowerCreate):
+        db_flower = Cart_Flower(name=new_flower.name, count=new_flower.count, cost=new_flower.cost)
+        db.add(db_flower)
+        db.commit()
+        db.refresh(db_flower)
+        return db_flower
+    
+    def get_all_cart_flowers(self, db: Session, skip: int = 0, limit: int = 10):
+        return db.query(Cart_Flower).offset(skip).limit(limit).all()
+    
     # конец решения
